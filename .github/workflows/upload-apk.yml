@@ -24,6 +24,15 @@ jobs:
 
 
       # -------------------------------
+      # Verify APK Exists
+      # -------------------------------
+      - name: Verify APK File
+        run: |
+          echo "Listing APK directory..."
+          ls -lh apk
+
+
+      # -------------------------------
       # Upload APK to LambdaTest
       # -------------------------------
       - name: Upload APK
@@ -37,13 +46,23 @@ jobs:
           echo "Uploading APK to LambdaTest Storage..."
           echo "======================================"
 
+          # File path (handle spaces safely)
+          APK_PATH="apk/app (38).apk"
+
+          if [[ ! -f "$APK_PATH" ]]; then
+            echo "❌ APK file not found at $APK_PATH"
+            exit 1
+          fi
+
           # Upload API call
           response=$(curl -u "$LT_USERNAME:$LT_ACCESS_KEY" \
             -X POST "https://manual-api.lambdatest.com/app/upload/realDevice" \
-            -F "appFile=@apk/app-release.apk")
+            -F "appFile=@$APK_PATH")
 
+          echo "--------------------------------------"
           echo "Full API Response:"
           echo "$response"
+          echo "--------------------------------------"
 
           # Extract APP URL
           app_url=$(echo $response | jq -r '.app_url')
@@ -57,3 +76,6 @@ jobs:
           echo "✅ APK Uploaded Successfully"
           echo "APP_ID: $app_url"
           echo "======================================"
+
+          # Save as output for reuse
+          echo "app_url=$app_url" >> $GITHUB_OUTPUT
