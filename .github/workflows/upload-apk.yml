@@ -1,0 +1,59 @@
+name: Upload APK to KaneAI
+
+on:
+  workflow_dispatch:
+
+jobs:
+  upload-apk:
+    runs-on: ubuntu-latest
+
+    steps:
+
+      # -------------------------------
+      # Checkout Repository
+      # -------------------------------
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+
+      # -------------------------------
+      # Install jq (for parsing response)
+      # -------------------------------
+      - name: Install jq
+        run: sudo apt-get update && sudo apt-get install -y jq
+
+
+      # -------------------------------
+      # Upload APK to LambdaTest
+      # -------------------------------
+      - name: Upload APK
+        id: upload
+        env:
+          LT_USERNAME: ${{ secrets.LT_USERNAME }}
+          LT_ACCESS_KEY: ${{ secrets.LT_ACCESS_KEY }}
+        run: |
+
+          echo "======================================"
+          echo "Uploading APK to LambdaTest Storage..."
+          echo "======================================"
+
+          # Upload API call
+          response=$(curl -u "$LT_USERNAME:$LT_ACCESS_KEY" \
+            -X POST "https://manual-api.lambdatest.com/app/upload/realDevice" \
+            -F "appFile=@apk/app-release.apk")
+
+          echo "Full API Response:"
+          echo "$response"
+
+          # Extract APP URL
+          app_url=$(echo $response | jq -r '.app_url')
+
+          if [[ "$app_url" == "null" || -z "$app_url" ]]; then
+            echo "❌ APK Upload Failed"
+            exit 1
+          fi
+
+          echo ""
+          echo "✅ APK Uploaded Successfully"
+          echo "APP_ID: $app_url"
+          echo "======================================"
